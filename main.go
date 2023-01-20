@@ -31,7 +31,7 @@ var (
 		"AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
 		"A fake User-Agent")
 	fundaSearchUrl = flag.String("fundaSearchUrl", "https://www.funda.nl/koop/amstelveen/"+
-		"200000-450000/70+woonopp/2+slaapkamers/",
+		"200000-440000/70+woonopp/2+slaapkamers/",
 		"Funda search page with paramethers")
 	remoteWriteUrl          = flag.String("remoteWriteUrl", "http://vmagent:8429/api/v1/write", "Url to send metrics via remoteWrite")
 	scrapeDelayMilliseconds = flag.Int("scrapeDelayMilliseconds", 1000, "Delay between scrapes. Let's not overload Funda :)")
@@ -176,7 +176,7 @@ func main() {
 	numberRegex, _ := regexp.Compile("[0-9]+")
 	pages, _ := strconv.Atoi(numberRegex.FindString(doc.Find(".search-output-result-count span").Text()))
 	resultsOnPage := 15
-	cicles := pages % resultsOnPage
+	cicles := (pages / resultsOnPage) + 1
 	fmt.Printf("Found %v results on %v pages\n", pages, cicles)
 
 	for i := 1; i <= cicles; i++ {
