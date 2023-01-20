@@ -33,7 +33,7 @@ var (
 	fundaSearchUrl = flag.String("fundaSearchUrl", "https://www.funda.nl/koop/amstelveen/"+
 		"200000-450000/70+woonopp/2+slaapkamers/",
 		"Funda search page with paramethers")
-	remoteWriteUrl          = flag.String("remoteWriteUrl", "http://vmagent:8428/api/v1/write", "Url to send metrics via remoteWrite")
+	remoteWriteUrl          = flag.String("remoteWriteUrl", "http://vmagent:8429/api/v1/write", "Url to send metrics via remoteWrite")
 	scrapeDelayMilliseconds = flag.Int("scrapeDelayMilliseconds", 1000, "Delay between scrapes. Let's not overload Funda :)")
 )
 
