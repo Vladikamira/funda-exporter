@@ -20,6 +20,7 @@ import (
 type House struct {
 	Price       int
 	Address     string
+	PostCode    string
 	Link        string
 	Area        int
 	Year        int
@@ -86,6 +87,7 @@ func ScrapeFunda(url string, result *[]House) {
 	// prepare regular expressions
 	numberRegex, _ := regexp.Compile("[0-9\\.]+")
 	notNumberRegex, _ := regexp.Compile("[^0-9]")
+	postCodeRegex, _ := regexp.Compile("[0-9]{4} [A-Z]{2}")
 	space, _ := regexp.Compile(`\s+`)
 
 	// do parsing search page
@@ -99,6 +101,9 @@ func ScrapeFunda(url string, result *[]House) {
 		firstPrice := numberRegex.FindString(s.Find(".search-result-price").Text())
 		priceString := notNumberRegex.ReplaceAllString(firstPrice, "")
 		h.Price, _ = strconv.Atoi(priceString)
+
+		h.PostCode = postCodeRegex.FindString(h.Address)
+		fmt.Println(h.PostCode)
 
 		GetHouseDetail(&h)
 
@@ -205,6 +210,10 @@ func main() {
 						{
 							Name:  "address",
 							Value: s.Address,
+						},
+						{
+							Name:  "post_code",
+							Value: s.PostCode,
 						},
 						{
 							Name:  "link",
