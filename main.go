@@ -20,6 +20,7 @@ var (
 		"200000-440000/70+woonopp/2+slaapkamers/",
 		"Funda search page with paramethers")
 	ScrapeDelayMilliseconds = flag.Int("scrapeDelayMilliseconds", 1000, "Delay between scrapes. Let's not overload Funda :)")
+	ListenAddress = flag.String("addr", ":2112", "Address to listen")
 )
 
 // main
@@ -45,7 +46,7 @@ func main() {
 	// This section will start the HTTP server and expose
 	// any metrics on the /metrics endpoint.
 	http.Handle("/metrics", promhttp.Handler())
-	log.Info("Starting on port :2112")
-	log.Fatal(http.ListenAndServe(":2112", nil))
+	log.Info("Starting on port " + *ListenAddress)
+	log.Fatal(http.ListenAndServe(*ListenAddress, nil))
 
 }
