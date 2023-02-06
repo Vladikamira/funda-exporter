@@ -2,67 +2,50 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	"log"
-	"os"
-	"regexp"
-	"strconv"
+	"net/http"
 
-	"github.com/PuerkitoBio/goquery"
-	"github.com/atotto/encoding/csv"
+	log "github.com/sirupsen/logrus"
 
-	"github.com/vladikamira/funda-exporter/internal/config"
-	"github.com/vladikamira/funda-exporter/internal/remotewrite"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/vladikamira/funda-exporter/internal/collector"
 	"github.com/vladikamira/funda-exporter/internal/scraper"
+)
+
+var (
+	FakeUserAgent = flag.String("fakeUserAgent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "+
+		"AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
+		"A fake User-Agent")
+	FundaSearchUrl = flag.String("fundaSearchUrl", "https://www.funda.nl/koop/amstelveen/"+
+		"200000-440000/70+woonopp/2+slaapkamers/",
+		"Funda search page with paramethers")
+	ScrapeDelayMilliseconds = flag.Int("scrapeDelayMilliseconds", 1000, "Delay between scrapes. Let's not overload Funda :)")
 )
 
 // main
 func main() {
 
-	var results []config.House
+	var results []scraper.House
 
 	// parse flags
 	flag.Parse()
 
-	res, err := scraper.ScrapePageContent(*config.FundaSearchUrl, *config.FakeUserAgent)
-	if err != nil {
-		log.Fatal(err)
+	// Setup better logging
+	formatter := &log.TextFormatter{
+		FullTimestamp: true,
 	}
 
-	defer res.Body.Close()
+	log.SetFormatter(formatter)
 
-	// Load the HTML document
-	doc, err := goquery.NewDocumentFromReader(res.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// Create a new instance of the fundaCollector and
+	// register it with the prometheus client.
+	fundaCollector := collector.NewFundaCollector(&results, FakeUserAgent, FundaSearchUrl, ScrapeDelayMilliseconds)
+	prometheus.MustRegister(fundaCollector)
 
-	// find amount of elements in search
-	numberRegex, _ := regexp.Compile("[0-9]+")
-	pages, _ := strconv.Atoi(numberRegex.FindString(doc.Find(config.FundaHtmlSearchPages).Text()))
-	resultsOnPage := 15
-
-	cicles := 0
-	if pages%resultsOnPage == 0 {
-		cicles = (pages / resultsOnPage)
-	} else {
-		cicles = (pages / resultsOnPage) + 1
-	}
-
-	fmt.Printf("Found %v results on %v pages\n", pages, cicles)
-
-	for i := 1; i <= cicles; i++ {
-		scraper.ScrapeFunda(fmt.Sprintf(*config.FundaSearchUrl+"p%d/", i), &results)
-	}
-
-	// save result in file
-	f, _ := os.Create("house.txt")
-	defer f.Close()
-
-	w := csv.NewWriter(f)
-	w.WriteStructAll(results)
-
-	//	fmt.Println(results)
-	remotewrite.Send(&results)
+	// This section will start the HTTP server and expose
+	// any metrics on the /metrics endpoint.
+	http.Handle("/metrics", promhttp.Handler())
+	log.Info("Starting on port :2112")
+	log.Fatal(http.ListenAndServe(":2112", nil))
 
 }

@@ -2,20 +2,36 @@ package scraper
 
 import (
 	"fmt"
-	"log"
+
+	//	"log"
 	"net/http"
 	"regexp"
 	"strconv"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/vladikamira/funda-exporter/internal/config"
+	log "github.com/sirupsen/logrus"
+)
+
+type House struct {
+	Price       int
+	Address     string
+	PostCode    string
+	Link        string
+	Area        int
+	Year        int
+	EnergyLabel string
+}
+
+// html objects from Funda
+var (
+	FundaHtmlSearchPages = ".search-output-result-count span"
 )
 
 // just make a request and
 func ScrapePageContent(url, fakeUserAgent string) (*http.Response, error) {
 
-	fmt.Printf("Scraping %s\n", url)
+	log.Infof("Scraping %s\n", url)
 
 	client := &http.Client{}
 
@@ -43,9 +59,9 @@ func ScrapePageContent(url, fakeUserAgent string) (*http.Response, error) {
 }
 
 // parsing search page
-func ScrapeFunda(url string, result *[]config.House) {
+func ScrapeFunda(url string, result *[]House, userAgent, searchUrl *string, scrapeDelay *int) {
 
-	res, err := ScrapePageContent(url, *config.FakeUserAgent)
+	res, err := ScrapePageContent(url, *userAgent)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -67,7 +83,7 @@ func ScrapeFunda(url string, result *[]config.House) {
 	// do parsing search page
 	doc.Find(".search-result").Each(func(i int, s *goquery.Selection) {
 
-		var h config.House
+		var h House
 		h.Address = space.ReplaceAllString(s.Find(".search-result__header-title-col").Text(), " ")
 		h.Link, _ = s.Find(".search-result__header a").Attr("href")
 		h.Link = "https://www.funda.nl" + h.Link
@@ -79,16 +95,16 @@ func ScrapeFunda(url string, result *[]config.House) {
 		h.PostCode = postCodeRegex.FindString(h.Address)
 		//fmt.Println(h.PostCode)
 
-		GetHouseDetail(&h)
+		GetHouseDetail(&h, userAgent, searchUrl, scrapeDelay)
 
 		*result = append(*result, h)
 	})
 }
 
-func GetHouseDetail(h *config.House) {
+func GetHouseDetail(h *House, userAgent, searchUrl *string, scrapeDelay *int) {
 	url := h.Link
 
-	res, err := ScrapePageContent(url, *config.FakeUserAgent)
+	res, err := ScrapePageContent(url, *userAgent)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -128,5 +144,40 @@ func GetHouseDetail(h *config.House) {
 
 	})
 	//fmt.Println("   ")
-	time.Sleep(time.Duration(*config.ScrapeDelayMilliseconds) * time.Millisecond)
+	time.Sleep(time.Duration(*scrapeDelay) * time.Millisecond)
+}
+
+func RunScraper(results *[]House, userAgent, searchUrl *string, scrapeDelay *int) {
+
+	res, err := ScrapePageContent(*searchUrl, *userAgent)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer res.Body.Close()
+
+	// Load the HTML document
+	doc, err := goquery.NewDocumentFromReader(res.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// find amount of elements in search
+	numberRegex, _ := regexp.Compile("[0-9]+")
+	pages, _ := strconv.Atoi(numberRegex.FindString(doc.Find(FundaHtmlSearchPages).Text()))
+	resultsOnPage := 15
+
+	cicles := 0
+	if pages%resultsOnPage == 0 {
+		cicles = (pages / resultsOnPage)
+	} else {
+		cicles = (pages / resultsOnPage) + 1
+	}
+
+	log.Infof("Found %v results on %v pages\n", pages, cicles)
+
+	for i := 1; i <= cicles; i++ {
+		ScrapeFunda(fmt.Sprintf(*searchUrl+"p%d/", i), results, userAgent, searchUrl, scrapeDelay)
+	}
+
 }
