@@ -2,6 +2,7 @@ package scraper
 
 import (
 	"fmt"
+	"strings"
 
 	//	"log"
 	"net/http"
@@ -14,18 +15,29 @@ import (
 )
 
 type House struct {
-	Price       int
-	Address     string
-	PostCode    string
-	Link        string
-	Area        int
-	Year        int
-	EnergyLabel string
+	Price         int
+	Address       string
+	PostCode      string
+	City          string
+	Link          string
+	Area          int
+	Year          int
+	EnergyLabel   string
+	Published     string
+	Isolation     string
+	ExtraPayments string
 }
 
-// html objects from Funda
 var (
-	FundaHtmlSearchPages = ".search-output-result-count span"
+	// html objects from Funda
+	fundaHtmlSearchPages = ".search-output-result-count span"
+
+	// regular exprations
+	yearRegex, _         = regexp.Compile(`[0-9]{4}`)
+	energyLabelRegex, _  = regexp.Compile(`[A-G]{1}[+]*`)
+	numberRegex, _       = regexp.Compile(`[0-9\.]+`)
+	postCodeCityRegex, _ = regexp.Compile(`([0-9]{4} [A-Z]{2})( )(\w+)`)
+	space, _             = regexp.Compile(`\s+`)
 )
 
 // just make a request and
@@ -74,29 +86,15 @@ func ScrapeFunda(url string, result *[]House, userAgent, searchUrl *string, scra
 		log.Fatal(err)
 	}
 
-	// prepare regular expressions
-	numberRegex, _ := regexp.Compile("[0-9\\.]+")
-	notNumberRegex, _ := regexp.Compile("[^0-9]")
-	postCodeRegex, _ := regexp.Compile("[0-9]{4} [A-Z]{2}")
-	space, _ := regexp.Compile(`\s+`)
-
 	// do parsing search page
 	doc.Find(".search-result").Each(func(i int, s *goquery.Selection) {
 
 		var h House
-		h.Address = space.ReplaceAllString(s.Find(".search-result__header-title-col").Text(), " ")
+
 		h.Link, _ = s.Find(".search-result__header a").Attr("href")
 		h.Link = "https://www.funda.nl" + h.Link
 
-		firstPrice := numberRegex.FindString(s.Find(".search-result-price").Text())
-		priceString := notNumberRegex.ReplaceAllString(firstPrice, "")
-		h.Price, _ = strconv.Atoi(priceString)
-
-		h.PostCode = postCodeRegex.FindString(h.Address)
-		//fmt.Println(h.PostCode)
-
 		GetHouseDetail(&h, userAgent, searchUrl, scrapeDelay)
-
 		*result = append(*result, h)
 	})
 }
@@ -117,16 +115,24 @@ func GetHouseDetail(h *House, userAgent, searchUrl *string, scrapeDelay *int) {
 		log.Fatal(err)
 	}
 
-	yearRegex, _ := regexp.Compile("[0-9]{4}")
-	numberRegex, _ := regexp.Compile("[0-9]+")
-	energyLabelRegex, _ := regexp.Compile("[A-G]{1}[+]*")
-	space, _ := regexp.Compile(`\s+`)
+	// header parsing
+	doc.Find(".object-header__details").Each(func(i int, s *goquery.Selection) {
 
+		h.Address = s.Find(".object-header__title").Text()
+		h.Price, _ = strconv.Atoi(strings.Replace(numberRegex.FindString(s.Find(".object-header__price").Text()), ".", "", -1))
+		h.PostCode = postCodeCityRegex.FindStringSubmatch(s.Find(".object-header__subtitle").Text())[1]
+		h.City = postCodeCityRegex.FindStringSubmatch(s.Find(".object-header__subtitle").Text())[3]
+	})
+
+	// apartment properties fields
 	doc.Find(".object-kenmerken-list dt").Each(func(i int, s *goquery.Selection) {
 		nf := s.NextFiltered("dd")
 
 		key := space.ReplaceAllString(s.Text(), " ")
 		value := space.ReplaceAllString(nf.Text(), " ")
+
+		// remove spaces
+		value = strings.TrimSpace(value)
 
 		switch key {
 		case "Wonen": // square meters
@@ -135,6 +141,12 @@ func GetHouseDetail(h *House, userAgent, searchUrl *string, scrapeDelay *int) {
 			h.EnergyLabel = energyLabelRegex.FindString(value)
 		case "Bouwjaar": // costruction year
 			h.Year, _ = strconv.Atoi(yearRegex.FindString(value))
+		case "Aangeboden sinds": // publication date
+			h.Published = value
+		case "Isolatie": // Isolation features like double glass
+			h.Isolation = value
+		case "Bijdrage VvE": // Extra payments
+			h.ExtraPayments = value
 		default:
 			//
 		}
@@ -164,7 +176,7 @@ func RunScraper(results *[]House, userAgent, searchUrl *string, scrapeDelay *int
 
 	// find amount of elements in search
 	numberRegex, _ := regexp.Compile("[0-9]+")
-	pages, _ := strconv.Atoi(numberRegex.FindString(doc.Find(FundaHtmlSearchPages).Text()))
+	pages, _ := strconv.Atoi(numberRegex.FindString(doc.Find(fundaHtmlSearchPages).Text()))
 	resultsOnPage := 15
 
 	cicles := 0

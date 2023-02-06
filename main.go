@@ -13,14 +13,12 @@ import (
 )
 
 var (
-	FakeUserAgent = flag.String("fakeUserAgent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "+
-		"AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
+	FakeUserAgent = flag.String("fakeUserAgent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
 		"A fake User-Agent")
-	FundaSearchUrl = flag.String("fundaSearchUrl", "https://www.funda.nl/koop/amstelveen/"+
-		"200000-440000/70+woonopp/2+slaapkamers/",
+	FundaSearchUrl = flag.String("fundaSearchUrl", "https://www.funda.nl/koop/amstelveen,amsterdam/300000-440000/70+woonopp/2+slaapkamers/",
 		"Funda search page with paramethers")
 	ScrapeDelayMilliseconds = flag.Int("scrapeDelayMilliseconds", 1000, "Delay between scrapes. Let's not overload Funda :)")
-	ListenAddress = flag.String("addr", ":2112", "Address to listen")
+	ListenAddress = flag.String("listenAddress", ":2112", "Address to listen")
 )
 
 // main
