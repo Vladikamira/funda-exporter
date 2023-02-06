@@ -33,6 +33,10 @@ func NewFundaCollector(r *[]scraper.House, userAgent, searchUrl *string, delay *
 				"energy_label",
 				"year",
 				"area",
+				"published",
+				"isolation",
+				"extra_payments",
+				"city",
 			}, nil,
 		),
 	}
@@ -65,6 +69,10 @@ func (collector *FundaCollector) Collect(ch chan<- prometheus.Metric) {
 			s.EnergyLabel,
 			strconv.Itoa(s.Year),
 			strconv.Itoa(s.Area),
+			s.Published,
+			s.Isolation,
+			s.ExtraPayments,
+			s.City,
 		)
 	}
 }
