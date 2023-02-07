@@ -6,6 +6,13 @@ So please consider to set relatively high `scrape_interval` and `scrape_timeout`
 
 Docker images could be found here: `vladikamira/funda-exporter:TAG_NAME`
 
+
+parameters:
+`fakeUserAgent` (string)        - HTTP User-Agent to predend as a browserm otherwise Funda will block you
+`fundaSearchUrl` (string)       - Search URL with parameters like Price range, City, space size etc.. You feed your own URL here.
+`listenAddress` (string)        - Address to listen on
+`scrapeDelayMilliseconds` (Int) - Interval to add between scrapes to not overload Funda :)
+
 example to run with docker-compose:
 ```
 version: "3.8"

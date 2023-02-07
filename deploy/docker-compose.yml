@@ -39,7 +39,7 @@ services:
   funda-exporter:
     container_name: funda-exporter
     restart: always
-    image: vladikamira/funda-exporter:v0.0.2
+    image: vladikamira/funda-exporter:v0.0.3
     command:
       - '-scrapeDelayMilliseconds=500'
       - '-fundaSearchUrl=https://www.funda.nl/koop/amstelveen,amsterdam/300000-440000/70+woonopp/2+slaapkamers/'
