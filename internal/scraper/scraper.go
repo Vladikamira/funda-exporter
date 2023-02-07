@@ -71,7 +71,7 @@ func ScrapePageContent(url, fakeUserAgent string) (*http.Response, error) {
 }
 
 // parsing search page
-func ScrapeFunda(url string, result *[]House, userAgent, searchUrl *string, scrapeDelay *int) {
+func GetFundaSearchResults(url string, result *[]House, userAgent, searchUrl *string, scrapeDelay *int) {
 
 	res, err := ScrapePageContent(url, *userAgent)
 	if err != nil {
@@ -94,7 +94,6 @@ func ScrapeFunda(url string, result *[]House, userAgent, searchUrl *string, scra
 		h.Link, _ = s.Find(".search-result__header a").Attr("href")
 		h.Link = "https://www.funda.nl" + h.Link
 
-		GetHouseDetail(&h, userAgent, searchUrl, scrapeDelay)
 		*result = append(*result, h)
 	})
 }
@@ -122,6 +121,7 @@ func GetHouseDetail(h *House, userAgent, searchUrl *string, scrapeDelay *int) {
 		h.Price, _ = strconv.Atoi(strings.Replace(numberRegex.FindString(s.Find(".object-header__price").Text()), ".", "", -1))
 		h.PostCode = postCodeCityRegex.FindStringSubmatch(s.Find(".object-header__subtitle").Text())[1]
 		h.City = postCodeCityRegex.FindStringSubmatch(s.Find(".object-header__subtitle").Text())[3]
+
 	})
 
 	// apartment properties fields
@@ -155,7 +155,8 @@ func GetHouseDetail(h *House, userAgent, searchUrl *string, scrapeDelay *int) {
 		//fmt.Println("KEY: ", key, "VALUE: ", value)
 
 	})
-	//fmt.Println("   ")
+
+	// wait a bit to not overload Funda
 	time.Sleep(time.Duration(*scrapeDelay) * time.Millisecond)
 }
 
@@ -188,8 +189,13 @@ func RunScraper(results *[]House, userAgent, searchUrl *string, scrapeDelay *int
 
 	log.Infof("Found %v results on %v pages\n", pages, cicles)
 
+	log.Info("Collecting all refenrences to the house detail pages")
 	for i := 1; i <= cicles; i++ {
-		ScrapeFunda(fmt.Sprintf(*searchUrl+"p%d/", i), results, userAgent, searchUrl, scrapeDelay)
+		GetFundaSearchResults(fmt.Sprintf(*searchUrl+"p%d/", i), results, userAgent, searchUrl, scrapeDelay)
 	}
 
+	log.Info("Collecting data for each particular house")
+	for i, _ := range *results {
+		GetHouseDetail(&(*results)[i], userAgent, searchUrl, scrapeDelay)
+	}
 }
