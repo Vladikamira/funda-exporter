@@ -44,4 +44,4 @@ jobs:
         with:
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: vladikamira/funda-exporter:${{ github.ref_name }}
+          tags: vladikamira/funda-exporter:latest
