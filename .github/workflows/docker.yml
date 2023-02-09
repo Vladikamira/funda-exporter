@@ -28,7 +28,18 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      # tags
       - name: Build and push
+        if: github.ref_type == 'tag'
+        uses: docker/build-push-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: vladikamira/funda-exporter:${{ github.ref_name }}
+
+      # main/latest
+      - name: Build and push
+        if: github.ref_name == 'main'
         uses: docker/build-push-action@v3
         with:
           platforms: linux/amd64,linux/arm64
