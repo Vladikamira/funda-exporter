@@ -12,18 +12,20 @@ type FundaCollector struct {
 	userAgent         *string
 	searchUrl         *string
 	delayMilliseconds *int
+	postCodes         *[]string
 	fundaPrice        *prometheus.Desc
 }
 
 // FundaCollector You must create a constructor for your collector that
 // initializes every descriptor and returns a pointer to the collector
-func NewFundaCollector(userAgent, searchUrl *string, delay *int) *FundaCollector {
+func NewFundaCollector(userAgent, searchUrl *string, delay *int, postCodes *[]string) *FundaCollector {
 
 	return &FundaCollector{
 		results:           &[]scraper.House{},
 		userAgent:         userAgent,
 		searchUrl:         searchUrl,
 		delayMilliseconds: delay,
+		postCodes:         postCodes,
 		fundaPrice: prometheus.NewDesc("funda_apartment_price",
 			"Funda Apartment price",
 			[]string{
@@ -57,7 +59,7 @@ func (collector *FundaCollector) Collect(ch chan<- prometheus.Metric) {
 	*collector.results = []scraper.House{}
 
 	// run scraper
-	scraper.RunScraper(collector.results, collector.userAgent, collector.searchUrl, collector.delayMilliseconds)
+	scraper.RunScraper(collector.results, collector.userAgent, collector.searchUrl, collector.delayMilliseconds, collector.postCodes)
 
 	for _, s := range *collector.results {
 

@@ -36,9 +36,35 @@ var (
 	yearRegex, _         = regexp.Compile(`[0-9]{4}`)
 	energyLabelRegex, _  = regexp.Compile(`[A-G]{1}[+]*`)
 	numberRegex, _       = regexp.Compile(`[0-9\.]+`)
+	postCode, _          = regexp.Compile(`[0-9]{4}`)
+	postCodeLetters, _   = regexp.Compile(`[0-9]{4} [A-Z]{2}`)
 	postCodeCityRegex, _ = regexp.Compile(`([0-9]{4} [A-Z]{2})( )(\w+)`)
 	space, _             = regexp.Compile(`\s+`)
 )
+
+// check post codes if its in the filter list
+func postCodeFilter(pc string, postCodesAllowed *[]string) bool {
+
+	for _, p := range *postCodesAllowed {
+
+		// check for exact match first
+		if postCodeLetters.MatchString(p) {
+			if pc == p {
+				return true
+			}
+		}
+
+		// check for main code match
+		if postCode.MatchString(p) {
+			if strings.Split(pc, " ")[0] == p {
+				return true
+			}
+		}
+
+	}
+
+	return false
+}
 
 // just make a request and
 func ScrapePageContent(url, fakeUserAgent string) (*http.Response, error) {
@@ -71,7 +97,7 @@ func ScrapePageContent(url, fakeUserAgent string) (*http.Response, error) {
 }
 
 // parsing search page
-func GetFundaSearchResults(url string, result *[]House, userAgent, searchUrl *string, scrapeDelay *int) {
+func GetFundaSearchResults(url string, result *[]House, userAgent, searchUrl *string, scrapeDelay *int, postCodes *[]string) {
 
 	res, err := ScrapePageContent(url, *userAgent)
 	if err != nil {
@@ -94,7 +120,16 @@ func GetFundaSearchResults(url string, result *[]House, userAgent, searchUrl *st
 		h.Link, _ = s.Find(".search-result__header a").Attr("href")
 		h.Link = "https://www.funda.nl" + h.Link
 
-		*result = append(*result, h)
+		// getting post code and apply filter if there is one
+		if len(*postCodes) > 0 {
+			h.PostCode = postCodeCityRegex.FindStringSubmatch(s.Find(".search-result__header-subtitle").Text())[1]
+			if postCodeFilter(h.PostCode, postCodes) {
+				*result = append(*result, h)
+			}
+		} else {
+			*result = append(*result, h)
+		}
+
 	})
 }
 
@@ -160,7 +195,7 @@ func GetHouseDetail(h *House, userAgent, searchUrl *string, scrapeDelay *int) {
 	time.Sleep(time.Duration(*scrapeDelay) * time.Millisecond)
 }
 
-func RunScraper(results *[]House, userAgent, searchUrl *string, scrapeDelay *int) {
+func RunScraper(results *[]House, userAgent, searchUrl *string, scrapeDelay *int, postCodes *[]string) {
 
 	res, err := ScrapePageContent(*searchUrl, *userAgent)
 	if err != nil {
@@ -191,8 +226,10 @@ func RunScraper(results *[]House, userAgent, searchUrl *string, scrapeDelay *int
 
 	log.Info("Collecting all refenrences to the house detail pages")
 	for i := 1; i <= cicles; i++ {
-		GetFundaSearchResults(fmt.Sprintf(*searchUrl+"p%d/", i), results, userAgent, searchUrl, scrapeDelay)
+		GetFundaSearchResults(fmt.Sprintf(*searchUrl+"p%d/", i), results, userAgent, searchUrl, scrapeDelay, postCodes)
 	}
+
+	log.Infof("%v results left after applying filter \n", len(*results))
 
 	log.Info("Collecting data for each particular house")
 	for i, _ := range *results {

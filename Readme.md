@@ -12,6 +12,7 @@ parameters:
 - `fundaSearchUrl` (string)       - Search URL with parameters like Price range, City, space size etc.. You feed your own URL here.
 - `listenAddress` (string)        - Address to listen on
 - `scrapeDelayMilliseconds` (Int) - Interval to add between scrapes to not overload Funda :)
+- `postCodes` (string)            - List of Post Codes to search for (example: 1186 AB, 1185)
 
 example to run with docker-compose:
 ```
