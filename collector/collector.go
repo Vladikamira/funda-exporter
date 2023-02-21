@@ -4,7 +4,7 @@ import (
 	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/vladikamira/funda-exporter/internal/scraper"
+	"github.com/vladikamira/funda-exporter/scraper"
 )
 
 type FundaCollector struct {
